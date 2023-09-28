@@ -11,7 +11,7 @@ from .conv import Conv, DWConv, GhostConv, LightConv, RepConv
 from .transformer import TransformerBlock
 
 __all__ = ('DFL', 'HGBlock', 'HGStem', 'SPP', 'SPPF', 'C1', 'C2', 'C3', 'C2f', 'C3x', 'C3TR', 'C3Ghost',
-           'GhostBottleneck', 'Bottleneck', 'BottleneckCSP', 'Proto', 'RepC3')
+           'GhostBottleneck', 'Bottleneck', 'BottleneckCSP', 'Proto', 'RepC3', 'SGConv', 'VarGBlock')
 
 
 class DFL(nn.Module):
@@ -165,15 +165,43 @@ class C2(nn.Module):
         return self.cv2(torch.cat((self.m(a), b), 1))
 
 
+class SGConv(nn.Module):
+
+    def __init__(self, c1, c2, k=1, s=1, p=None, g=1, d=1, c3=None, factor=1.0, act=True):
+        super().__init__()
+        if c3 is None:
+            c3 = c1
+        tmp = int(c3 * factor)
+        self.dw = Conv(c1, tmp, k, s, p, g, d, act)
+        self.pw = Conv(tmp, c2, 1, 1, None, 1, 1, True)
+
+    def forward(self, x):
+        return self.pw(self.dw(x))
+
+
+class VarGBlock(nn.Module):
+
+    def __init__(self, c1, c2, shortcut=True, group_base=8, k=(3, 3), e=0.5, factor=1.0):
+        super().__init__()
+        c_ = int(c2 * e)  # hidden channels
+        g = c1 // group_base
+        self.cv1 = SGConv(c1, c_, k[0], 1, g=g, factor=factor)
+        self.cv2 = SGConv(c_, c2, k[1], 1, g=g, factor=factor)
+        self.add = shortcut and c1 == c2
+
+    def forward(self, x):
+        return x + self.cv2(self.cv1(x)) if self.add else self.cv2(self.cv1(x))
+
+
 class C2f(nn.Module):
     """Faster Implementation of CSP Bottleneck with 2 convolutions."""
 
-    def __init__(self, c1, c2, n=1, shortcut=False, g=1, e=0.5):  # ch_in, ch_out, number, shortcut, groups, expansion
+    def __init__(self, c1, c2, n=1, shortcut=False, g=8, e=0.5, factor=2.0):  # ch_in, ch_out, number, shortcut, groups, expansion
         super().__init__()
         self.c = int(c2 * e)  # hidden channels
         self.cv1 = Conv(c1, 2 * self.c, 1, 1)
         self.cv2 = Conv((2 + n) * self.c, c2, 1)  # optional act=FReLU(c2)
-        self.m = nn.ModuleList(Bottleneck(self.c, self.c, shortcut, g, k=((3, 3), (3, 3)), e=1.0) for _ in range(n))
+        self.m = nn.ModuleList(VarGBlock(self.c, self.c, shortcut, g, k=((3, 3), (3, 3)), e=1.0, factor=factor) for _ in range(n))
 
     def forward(self, x):
         """Forward pass through C2f layer."""

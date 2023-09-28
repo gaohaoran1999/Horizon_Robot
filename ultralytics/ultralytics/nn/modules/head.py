@@ -26,6 +26,7 @@ class Detect(nn.Module):
     shape = None
     anchors = torch.empty(0)  # init
     strides = torch.empty(0)  # init
+    horizon = True
 
     def __init__(self, nc=80, ch=()):  # detection layer
         super().__init__()
@@ -42,6 +43,9 @@ class Detect(nn.Module):
 
     def forward(self, x):
         """Concatenates and returns predicted bounding boxes and class probabilities."""
+        if self.horizon:
+            return self.forward_horizon(x)
+        
         shape = x[0].shape  # BCHW
         for i in range(self.nl):
             x[i] = torch.cat((self.cv2[i](x[i]), self.cv3[i](x[i])), 1)
@@ -70,6 +74,15 @@ class Detect(nn.Module):
 
         y = torch.cat((dbox, cls.sigmoid()), 1)
         return y if self.export else (y, x)
+    
+    def forward_horizon(self, x):
+        results = []
+        for i in range(self.nl):
+            dfl = self.cv2[i](x[i]).permute(0, 2, 3, 1).contiguous()
+            cls = self.cv3[i](x[i]).permute(0, 2, 3, 1).contiguous()
+            results.append(cls)
+            results.append(dfl)
+        return tuple(results)
 
     def bias_init(self):
         """Initialize Detect() biases, WARNING: requires stride availability."""
