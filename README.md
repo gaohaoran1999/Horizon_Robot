@@ -21,6 +21,8 @@ python setup.py install
 Horizon Algorithm Toolchain provides Docker images to provide users with quick access to the tools. Simply run the `run_docker.sh` script:
 ```bash
 sh run_docker.sh ./data/ gpu
+pip uninstall horizon-nn
+pip install ddk/package/host/ai_toolchain/horizon_nn_gpu-0.18.2-cp38-cp38-linux_x86_64.whl
 ```
 This will specify the dataset path and run the docker in GPU mode (make sure that the GPU environment is properly set).
 
@@ -29,26 +31,34 @@ This will specify the dataset path and run the docker in GPU mode (make sure tha
 <details open>
 <summary>Usage</summary>
 
-
-#### Python
-
-YOLOv8 may also be used directly in a Python environment, and accepts the same [arguments](https://docs.ultralytics.com/usage/cfg/) as in the CLI example above:
-
-```python
-from ultralytics import YOLO
-
-# Load a model
-model = YOLO("yolov8n.yaml")  # build a new model from scratch
-model = YOLO("yolov8n.pt")  # load a pretrained model (recommended for training)
-
-# Use the model
-model.train(data="coco128.yaml", epochs=3)  # train the model
-metrics = model.val()  # evaluate model performance on the validation set
-results = model("https://ultralytics.com/images/bus.jpg")  # predict on an image
-path = model.export(format="onnx")  # export the model to ONNX format
+#### Build
+This will enable Horizon Algorithm Toolchain to automatically convert the ONNX model to formats ready for deployment on Horizon SoCs.
+```bash
+sh build.sh
 ```
 
-[Models](https://github.com/ultralytics/ultralytics/tree/main/ultralytics/cfg/models) download automatically from the latest Ultralytics [release](https://github.com/ultralytics/assets/releases). See YOLOv8 [Python Docs](https://docs.ultralytics.com/usage/python) for more examples.
+#### Evaluate on Host-side
+Before running the following commands, please download [coco_val2017](https://cocodataset.org/) under folder `yolov8_x3/ptq_project/coco` and specify current dataset path in file `evaluate.sh`.
+
+To evaluate the accuracy of original ONNX model with full coco_val2017:
+```bash
+sh evaluate.sh origin
+```
+
+To evaluate the accuracy of quantized model with full coco_val2017:
+```bash
+sh evaluate.sh quanti
+```
+
+To evaluate the accuracy of original ONNX model just for test:
+```bash
+sh evaluate.sh origin 20
+```
+
+To evaluate the accuracy of quantized model just for test:
+```bash
+sh evaluate.sh quanti 20
+```
 
 </details>
 
