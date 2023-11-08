@@ -10,7 +10,7 @@ This project aims to deploy YOLOv8 models onto the Sunrise-3 SoCs of Horizon Rob
 <summary>Install</summary>
 
 #### YOLOv8
-`yolov8_x3/ultralytics` folder contains the official YOLOv8 development tools along with the modified model structure that adapts to the Horizon platforms. For detailed model modification explanations, please see [Document]. Run the following commands to install:
+`yolov8_x3/ultralytics` folder contains the official YOLOv8 development tools along with the modified model structure that adapts to the Horizon platforms. For detailed model modification explanations, please see [【前沿算法】地平线适配 YOLOv8](https://developer.horizon.cc/forumDetail/189779523032809473). Run the following commands to install:
 ```bash
 cd yolov8_x3/ultralytics
 pip install -r requirements.txt
